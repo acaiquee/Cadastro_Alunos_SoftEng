@@ -21,22 +21,28 @@
             </div>
             
             <ul class="sidebar-menu">
-                <li><a href="#" class="active"><i data-lucide="layout-dashboard"></i> Dashboard</a></li>
+                <li><a href="#" class="active" id="nav-dashboard" onclick="switchTab('dashboard')"><i data-lucide="layout-dashboard"></i> Dashboard</a></li>
+                <li><a href="#" id="nav-report" onclick="switchTab('report')"><i data-lucide="bar-chart-3"></i> Relatório 360</a></li>
                 <li><a href="index.html"><i data-lucide="user-plus"></i> Novo Cadastro</a></li>
                 <li><a href="#" onclick="exportToCSV()"><i data-lucide="download"></i> Exportar Dados</a></li>
             </ul>
 
             <div class="sidebar-footer">
                 <div class="theme-switch-wrapper">
-                    <span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
-                        <i data-lucide="moon" style="width: 1rem;"></i> Modo Dark
+                    <span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: rgba(255,255,255,0.8);">
+                        <i data-lucide="moon" style="width: 1rem;"></i> Dark Mode
                     </span>
                     <label class="switch">
                         <input type="checkbox" id="theme-toggle">
-                        <span class="slider"></span>
+                        <span class="slider">
+                            <div class="slider-icons">
+                                <i data-lucide="sun" style="width: 10px; height: 10px;"></i>
+                                <i data-lucide="moon" style="width: 10px; height: 10px;"></i>
+                            </div>
+                        </span>
                     </label>
                 </div>
-                <button class="btn-danger" onclick="logout()" style="width: 100%; justify-content: flex-start;">
+                <button class="btn-danger" onclick="logout()" style="width: 100%; justify-content: flex-start; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);">
                     <i data-lucide="log-out"></i> Sair
                 </button>
             </div>
@@ -44,189 +50,218 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <header class="dashboard-header">
-                <div>
-                    <h1>Olá, <span id="userNameDisplay">...</span> 👋</h1>
-                    <p style="color: var(--text-muted);">
-                        <span id="userRoleBadge" class="badge" style="background: var(--primary-color); color: white; margin-right: 0.5rem; text-transform: capitalize;">...</span>
-                        Acompanhe o desempenho da turma <span id="turmaDisplay" style="font-weight: 600; color: var(--primary-color);">...</span>
-                    </p>
+            <div id="dashboard-tab" class="tab-content">
+                <header class="dashboard-header">
+                    <div>
+                        <h1>Olá, <span id="userNameDisplay">...</span> 👋</h1>
+                        <p style="color: var(--text-muted);">
+                            <span id="userRoleBadge" class="badge" style="background: var(--primary-color); color: white; margin-right: 0.5rem; text-transform: capitalize;">...</span>
+                            Acompanhe o desempenho da turma <span id="turmaDisplay" style="font-weight: 600; color: var(--primary-color);">...</span>
+                        </p>
+                    </div>
+                    <div class="search-wrapper">
+                        <i data-lucide="search" style="width: 1.25rem;"></i>
+                        <input type="text" id="studentSearch" placeholder="Buscar aluno..." onkeyup="filterStudents()">
+                    </div>
+                </header>
+                <!-- Rest of dashboard content -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color);">
+                            <i data-lucide="users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Total Alunos</h3>
+                            <p id="stat-total">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color);">
+                            <i data-lucide="check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Avaliados</h3>
+                            <p id="stat-evaluated">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);">
+                            <i data-lucide="clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3>Pendentes</h3>
+                            <p id="stat-pending">0</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="search-wrapper">
-                    <i data-lucide="search" style="width: 1.25rem;"></i>
-                    <input type="text" id="studentSearch" placeholder="Buscar aluno..." onkeyup="filterStudents()">
-                </div>
-            </header>
 
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color);">
-                        <i data-lucide="users"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Total Alunos</h3>
-                        <p id="stat-total">0</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color);">
-                        <i data-lucide="check-circle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Avaliados</h3>
-                        <p id="stat-evaluated">0</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);">
-                        <i data-lucide="clock"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h3>Pendentes</h3>
-                        <p id="stat-pending">0</p>
-                    </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Matrícula</th>
+                                <th>Status</th>
+                                <th>Médias (CHA / Socio)</th>
+                                <th style="text-align: right;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody">
+                            <!-- Alunos carregados via JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Aluno</th>
-                            <th>Matrícula</th>
-                            <th>Status</th>
-                            <th>Médias (CHA / Socio)</th>
-                            <th style="text-align: right;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentTableBody">
-                        <!-- Alunos carregados via JS -->
-                    </tbody>
-                </table>
+            <div id="report-tab" class="tab-content" style="display: none;">
+                <header class="dashboard-header">
+                    <div>
+                        <h1>Relatório 360° 📊</h1>
+                        <p style="color: var(--text-muted);">Visão detalhada de todas as avaliações cruzadas da turma.</p>
+                    </div>
+                </header>
+
+                <div class="table-container" style="overflow-x: auto;">
+                    <table id="report360Table" style="min-width: 1000px;">
+                        <thead>
+                            <tr>
+                                <th>Aluno Avaliado</th>
+                                <th>Avaliador</th>
+                                <th>Papel</th>
+                                <th>CHA Médio</th>
+                                <th>Socioemocional</th>
+                                <th>Data</th>
+                                <th>Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report360Body">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
 
     <!-- Evaluation Modal -->
     <div id="evaluationModal" class="modal">
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
-            <div class="auth-header" style="text-align: left; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h2 id="targetStudentName" style="color: var(--primary-color);">Avaliar Aluno</h2>
-                        <p>Preencha as competências do aluno com base no desempenho observado.</p>
-                    </div>
-                    <button type="button" onclick="closeModal()" style="background: none; color: var(--text-muted); padding: 0.5rem;"><i data-lucide="x"></i></button>
+        <div class="modal-content">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <div>
+                    <h2 id="targetStudentName" style="color: var(--primary-color); margin-bottom: 0.25rem;">Avaliar Aluno</h2>
+                    <p style="font-size: 0.875rem; color: var(--text-muted);">Preencha as competências do aluno com base no desempenho observado.</p>
                 </div>
+                <button type="button" onclick="closeModal()" style="background: none; color: var(--text-muted); padding: 0.5rem; cursor: pointer;"><i data-lucide="x"></i></button>
             </div>
             
-            <form id="evaluationForm">
-                <input type="hidden" id="targetMatricula">
-                
-                <!-- CHA Section -->
-                <div class="eval-section">
-                    <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i data-lucide="brain" style="color: var(--primary-color);"></i> Dimensões CHA
-                    </h3>
-                    <div class="table-container" style="border: none; background: transparent;">
-                        <table class="eval-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 25%;">Dimensão</th>
-                                    <th style="width: 40%;">Descrição</th>
-                                    <th style="width: 15%;">Avaliação (1-5)</th>
-                                    <th style="width: 20%;">Observações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="font-weight: 600;">Conhecimento</td>
-                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O saber teórico. O indivíduo domina os conceitos, ferramentas e informações necessárias?</td>
-                                    <td><input type="number" id="cha_conhecimento" min="1" max="5" class="eval-input" required></td>
-                                    <td><input type="text" id="obs_conhecimento" class="eval-input" placeholder="..."></td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: 600;">Habilidade</td>
-                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O saber fazer. O indivíduo consegue aplicar a teoria na prática com precisão e agilidade?</td>
-                                    <td><input type="number" id="cha_habilidade" min="1" max="5" class="eval-input" required></td>
-                                    <td><input type="text" id="obs_habilidade" class="eval-input" placeholder="..."></td>
-                                </tr>
-                                <tr>
-                                    <td style="font-weight: 600;">Atitude</td>
-                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O querer fazer. Demonstra proatividade, iniciativa e compromisso com os resultados?</td>
-                                    <td><input type="number" id="cha_atitude" min="1" max="5" class="eval-input" required></td>
-                                    <td><input type="text" id="obs_atitude" class="eval-input" placeholder="..."></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Soft Skills Section -->
-                <div class="eval-section" style="margin-top: 2rem;">
-                    <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i data-lucide="heart" style="color: var(--danger-color);"></i> Competências Socioemocionais
-                    </h3>
-                    <div class="soft-skills-grid">
-                        <div class="skill-item">
-                            <div class="skill-info">
-                                <strong>Autogestão</strong>
-                                <p>Capacidade de organizar o tempo e lidar com estresse.</p>
-                            </div>
-                            <select id="soft_autogestao" required>
-                                <option value="1">Em Desenvolvimento</option>
-                                <option value="2">Básico</option>
-                                <option value="3">Proficiente</option>
-                                <option value="4">Avançado</option>
-                            </select>
-                        </div>
-                        <div class="skill-item">
-                            <div class="skill-info">
-                                <strong>Empatia e Colaboração</strong>
-                                <p>Trabalho em equipe e apoio aos colegas.</p>
-                            </div>
-                            <select id="soft_colaboracao" required>
-                                <option value="1">Em Desenvolvimento</option>
-                                <option value="2">Básico</option>
-                                <option value="3">Proficiente</option>
-                                <option value="4">Avançado</option>
-                            </select>
-                        </div>
-                        <div class="skill-item">
-                            <div class="skill-info">
-                                <strong>Resiliência Emocional</strong>
-                                <p>Reação a feedbacks e mudanças repentinas.</p>
-                            </div>
-                            <select id="soft_resiliencia" required>
-                                <option value="1">Em Desenvolvimento</option>
-                                <option value="2">Básico</option>
-                                <option value="3">Proficiente</option>
-                                <option value="4">Avançado</option>
-                            </select>
-                        </div>
-                        <div class="skill-item">
-                            <div class="skill-info">
-                                <strong>Comunicação Assertiva</strong>
-                                <p>Expressão clara, respeitosa e eficiente.</p>
-                            </div>
-                            <select id="soft_comunicacao" required>
-                                <option value="1">Em Desenvolvimento</option>
-                                <option value="2">Básico</option>
-                                <option value="3">Proficiente</option>
-                                <option value="4">Avançado</option>
-                            </select>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding-right: 0.5rem;">
+                <form id="evaluationForm">
+                    <input type="hidden" id="targetMatricula">
+                    
+                    <!-- CHA Section -->
+                    <div class="eval-section">
+                        <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+                            <i data-lucide="brain" style="color: var(--primary-color);"></i> Dimensões CHA
+                        </h3>
+                        <div class="table-container" style="border: none; background: transparent;">
+                            <table class="eval-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Dimensão</th>
+                                        <th style="width: 40%;">Descrição</th>
+                                        <th style="width: 15%;">Avaliação (1-5)</th>
+                                        <th style="width: 20%;">Observações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight: 600;">Conhecimento</td>
+                                        <td style="font-size: 0.8rem; color: var(--text-muted);">O saber teórico. O indivíduo domina os conceitos, ferramentas e informações necessárias?</td>
+                                        <td><input type="number" id="cha_conhecimento" min="1" max="5" class="eval-input" required></td>
+                                        <td><input type="text" id="obs_conhecimento" class="eval-input" placeholder="..."></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600;">Habilidade</td>
+                                        <td style="font-size: 0.8rem; color: var(--text-muted);">O saber fazer. O indivíduo consegue aplicar a teoria na prática com precisão e agilidade?</td>
+                                        <td><input type="number" id="cha_habilidade" min="1" max="5" class="eval-input" required></td>
+                                        <td><input type="text" id="obs_habilidade" class="eval-input" placeholder="..."></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight: 600;">Atitude</td>
+                                        <td style="font-size: 0.8rem; color: var(--text-muted);">O querer fazer. Demonstra proatividade, iniciativa e compromisso com os resultados?</td>
+                                        <td><input type="number" id="cha_atitude" min="1" max="5" class="eval-input" required></td>
+                                        <td><input type="text" id="obs_atitude" class="eval-input" placeholder="..."></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                </div>
 
-                <div style="display: flex; gap: 1rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
-                    <button type="button" class="btn-secondary" onclick="closeModal()" style="background: var(--bg-color); color: var(--text-color); flex: 1;">Cancelar</button>
-                    <button type="submit" class="btn-primary" style="flex: 2;">
-                        <i data-lucide="save"></i> Finalizar Avaliação
-                    </button>
-                </div>
-            </form>
+                    <!-- Soft Skills Section -->
+                    <div class="eval-section" style="margin-top: 2rem;">
+                        <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1.1rem;">
+                            <i data-lucide="heart" style="color: var(--danger-color);"></i> Competências Socioemocionais
+                        </h3>
+                        <div class="soft-skills-grid">
+                            <div class="skill-item">
+                                <div class="skill-info">
+                                    <strong>Autogestão</strong>
+                                    <p>Capacidade de organizar o tempo e lidar com estresse.</p>
+                                </div>
+                                <select id="soft_autogestao" required>
+                                    <option value="1">Em Desenvolvimento</option>
+                                    <option value="2">Básico</option>
+                                    <option value="3">Proficiente</option>
+                                    <option value="4">Avançado</option>
+                                </select>
+                            </div>
+                            <div class="skill-item">
+                                <div class="skill-info">
+                                    <strong>Empatia e Colaboração</strong>
+                                    <p>Trabalho em equipe e apoio aos colegas.</p>
+                                </div>
+                                <select id="soft_colaboracao" required>
+                                    <option value="1">Em Desenvolvimento</option>
+                                    <option value="2">Básico</option>
+                                    <option value="3">Proficiente</option>
+                                    <option value="4">Avançado</option>
+                                </select>
+                            </div>
+                            <div class="skill-item">
+                                <div class="skill-info">
+                                    <strong>Resiliência Emocional</strong>
+                                    <p>Reação a feedbacks e mudanças repentinas.</p>
+                                </div>
+                                <select id="soft_resiliencia" required>
+                                    <option value="1">Em Desenvolvimento</option>
+                                    <option value="2">Básico</option>
+                                    <option value="3">Proficiente</option>
+                                    <option value="4">Avançado</option>
+                                </select>
+                            </div>
+                            <div class="skill-item">
+                                <div class="skill-info">
+                                    <strong>Comunicação Assertiva</strong>
+                                    <p>Expressão clara, respeitosa e eficiente.</p>
+                                </div>
+                                <select id="soft_comunicacao" required>
+                                    <option value="1">Em Desenvolvimento</option>
+                                    <option value="2">Básico</option>
+                                    <option value="3">Proficiente</option>
+                                    <option value="4">Avançado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer" style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn-secondary" onclick="closeModal()" style="background: var(--bg-color); color: var(--text-color); flex: 1;">Cancelar</button>
+                <button type="button" id="btn-save-evaluation" onclick="document.getElementById('evaluationForm').requestSubmit()" class="btn-primary" style="flex: 2;">
+                    <i data-lucide="save"></i> Finalizar Avaliação
+                </button>
+            </div>
         </div>
     </div>
 
@@ -268,25 +303,31 @@
                     const foiAvaliado = s.statusAvaliacao?.foiAvaliado || false;
                     const statusClass = foiAvaliado ? 'badge-success' : 'badge-warning';
                     const statusText = foiAvaliado ? 'Avaliado' : 'Pendente';
-                    const medias = foiAvaliado ? 
-                        `${s.statusAvaliacao.mediaCHA} / ${s.statusAvaliacao.mediaSocioemocional}` : 
-                        '- / -';
+                    
+                    let medias = '- / -';
+                    if (foiAvaliado && s.statusAvaliacao.mediaCHA !== null) {
+                        medias = `${s.statusAvaliacao.mediaCHA.toFixed(1)} / ${s.statusAvaliacao.mediaSocioemocional.toFixed(1)}`;
+                    }
                     
                     // Escapar nome para o atributo onclick de forma segura
-                    const safeNome = s.nome.replace(/'/g, "\\'");
+                    const safeNome = s.nome.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    
+                    // Não permitir avaliar a si mesmo
+                    const isSelf = s.matricula === window.user.matricula;
                     
                     tr.innerHTML = `
-                        <td style="font-weight: 500;">${s.nome}</td>
+                        <td style="font-weight: 500;">${s.nome} ${isSelf ? '<span class="badge" style="background: var(--bg-color); color: var(--text-muted); font-size: 0.6rem;">VOCÊ</span>' : ''}</td>
                         <td style="color: var(--text-muted); font-family: monospace;">${s.matricula}</td>
                         <td><span class="badge ${statusClass}">${statusText}</span></td>
                         <td>${medias}</td>
                         <td style="text-align: right;">
-                            ${window.user.tipo === 'professor' ? `
-                                <button class="btn-primary" onclick="window.openEvaluationModal('${s.matricula}', '${safeNome}')" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
-                                    <i data-lucide="edit-3" style="width: 1rem;"></i> ${foiAvaliado ? 'Editar' : 'Avaliar'}
+                            ${!isSelf ? `
+                                <button class="btn-primary" onclick="window.openEvaluationModal('${s.matricula}', '${safeNome}')" style="padding: 0.5rem 1rem; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    <i data-lucide="${foiAvaliado ? 'edit-3' : 'plus-circle'}" style="width: 1rem; height: 1rem;"></i> 
+                                    ${foiAvaliado ? 'Editar' : 'Avaliar'}
                                 </button>
                             ` : `
-                                <span style="font-size: 0.75rem; color: var(--text-muted);">Somente leitura</span>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Auto-visualização</span>
                             `}
                         </td>
                     `;
@@ -302,11 +343,6 @@
         window.openEvaluationModal = async function(matricula, nome) {
             console.log('Abrindo modal para:', matricula, nome);
             
-            if (window.user.tipo !== 'professor') {
-                showToast('Apenas professores podem avaliar!', 'error');
-                return;
-            }
-
             // Limpar campos
             document.getElementById('targetMatricula').value = matricula;
             document.getElementById('targetStudentName').textContent = nome;
@@ -319,8 +355,12 @@
                 const response = await fetch(`/api/student/${matricula}`);
                 if (response.ok) {
                     const student = await response.json();
-                    if (student.statusAvaliacao && student.statusAvaliacao.detalhamento) {
-                        const det = student.statusAvaliacao.detalhamento;
+                    
+                    // Verificar se EU já avaliei este aluno (Avaliação 360)
+                    const minhaAvaliacao = student.avaliacoesRecebidas?.find(a => a.avaliadorMatricula === window.user.matricula);
+                    
+                    if (minhaAvaliacao && minhaAvaliacao.detalhamento) {
+                        const det = minhaAvaliacao.detalhamento;
                         
                         // Preencher CHA
                         document.getElementById('cha_conhecimento').value = det.cha.conhecimento.nota;
@@ -343,6 +383,104 @@
 
             document.getElementById('evaluationModal').style.display = 'block';
             lucide.createIcons();
+        }
+
+        // Sistema de abas
+        window.switchTab = function(tab) {
+            // Remove active class from all links
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            // Add active class to clicked link
+            if (typeof event !== 'undefined' && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            } else {
+                const navId = tab === 'dashboard' ? 'nav-dashboard' : 'nav-report';
+                const navEl = document.getElementById(navId);
+                if (navEl) navEl.classList.add('active');
+            }
+
+            // Hide all tabs with a small delay for smoother transition if needed
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(t => {
+                t.style.display = 'none';
+            });
+
+            // Show selected tab
+            const tabId = tab === 'dashboard' ? 'dashboard-tab' : 'report-tab';
+            const targetTab = document.getElementById(tabId);
+            if (targetTab) {
+                targetTab.style.display = 'block';
+            }
+            
+            if (tab === 'dashboard') {
+                loadStudents();
+            } else {
+                load360Report();
+            }
+        }
+
+        async function load360Report() {
+            try {
+                const response = await fetch(`/api/students/${window.user.turma}`);
+                const students = await response.json();
+                
+                const tbody = document.getElementById('report360Body');
+                tbody.innerHTML = '';
+
+                students.forEach(s => {
+                    // Buscar dados completos do aluno para ter as avaliações recebidas
+                    fetch(`/api/student/${s.matricula}`)
+                        .then(res => res.json())
+                        .then(fullStudent => {
+                            if (fullStudent.avaliacoesRecebidas && fullStudent.avaliacoesRecebidas.length > 0) {
+                                fullStudent.avaliacoesRecebidas.forEach(av => {
+                                    const tr = document.createElement('tr');
+                                    const date = new Date(av.data).toLocaleDateString('pt-BR');
+                                    const papelClass = av.avaliadorTipo === 'professor' ? 'badge-success' : 'badge-warning';
+                                    
+                                    tr.innerHTML = `
+                                        <td style="font-weight: 600;">${fullStudent.nome}</td>
+                                        <td>${av.avaliadorNome}</td>
+                                        <td><span class="badge ${papelClass}">${av.avaliadorTipo}</span></td>
+                                        <td><strong style="color: var(--primary-color)">${av.mediaCHA.toFixed(1)}</strong></td>
+                                        <td><strong style="color: var(--secondary-color)">${av.mediaSocioemocional.toFixed(1)}</strong></td>
+                                        <td style="font-size: 0.8rem; color: var(--text-muted)">${date}</td>
+                                        <td>
+                                            <button class="btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;" onclick="showEvalDetails('${fullStudent.matricula}', '${av.avaliadorMatricula}')">
+                                                <i data-lucide="eye" style="width: 0.8rem;"></i> Ver
+                                            </button>
+                                        </td>
+                                    `;
+                                    tbody.appendChild(tr);
+                                    lucide.createIcons();
+                                });
+                            }
+                        });
+                });
+
+                if (tbody.innerHTML === '') {
+                    // Feedback visual se não houver avaliações ainda
+                }
+            } catch (error) {
+                console.error('Erro ao carregar relatório 360:', error);
+                showToast('Erro ao carregar relatório', 'error');
+            }
+        }
+
+        window.showEvalDetails = async function(studentMatricula, avaliadorMatricula) {
+            // Reaproveitar o modal de avaliação para exibir detalhes (em modo leitura ou edição se for o próprio avaliador)
+            await window.openEvaluationModal(studentMatricula, 'Detalhes da Avaliação');
+            
+            const submitBtn = document.getElementById('btn-save-evaluation');
+            // Se não for o avaliador, desabilitar campos para apenas leitura
+            if (window.user.matricula !== avaliadorMatricula && window.user.tipo !== 'professor') {
+                const inputs = document.querySelectorAll('#evaluationForm input, #evaluationForm select');
+                inputs.forEach(i => i.disabled = true);
+                if (submitBtn) submitBtn.style.display = 'none';
+            } else {
+                const inputs = document.querySelectorAll('#evaluationForm input, #evaluationForm select');
+                inputs.forEach(i => i.disabled = false);
+                if (submitBtn) submitBtn.style.display = 'flex';
+            }
         }
 
         // Chamar carregamento inicial

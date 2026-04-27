@@ -5,9 +5,33 @@
   "email": "jose@gmail.com",
   "senha": "202601",
   "statusAvaliacao": {
-    "foiAvaliado": false,
-    "mediaCHA": null,
-    "mediaSocioemocional": null,
-    "avaliadoPor": []
+    "foiAvaliado": true,
+    "mediaCHA": 3.3,
+    "mediaSocioemocional": 2.5,
+    "avaliadoPor": [
+      "2023"
+    ],
+    "detalhamento": {
+      "cha": {
+        "conhecimento": {
+          "nota": 4,
+          "obs": ""
+        },
+        "habilidade": {
+          "nota": 3,
+          "obs": ""
+        },
+        "atitude": {
+          "nota": 3,
+          "obs": ""
+        }
+      },
+      "soft": {
+        "autogestao": 3,
+        "colaboracao": 3,
+        "resiliencia": 2,
+        "comunicacao": 2
+      }
+    }
   }
 }

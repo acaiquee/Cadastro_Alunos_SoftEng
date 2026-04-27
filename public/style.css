@@ -386,8 +386,17 @@ tr:hover td {
 
 /* Modal Modernization */
 .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-color: rgba(15, 23, 42, 0.7);
     backdrop-filter: blur(4px);
+    display: none;
+    z-index: 1000;
+    overflow-y: auto;
+    padding: 2rem 1rem;
 }
 
 .modal-content {
@@ -395,9 +404,16 @@ tr:hover td {
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     padding: 2.5rem;
-    max-width: 500px;
-    width: 90%;
-    margin: 5% auto;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    position: relative;
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 /* Evaluation Form Specifics */
@@ -476,8 +492,98 @@ tr:hover td {
     font-size: 0.875rem;
 }
 
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-content {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Theme Switch Improvements */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #475569;
+    transition: .4s;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.slider-icons {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    z-index: 1;
+}
+
+/* Mobile Adjustments */
 @media (max-width: 768px) {
-    .soft-skills-grid {
-        grid-template-columns: 1fr;
+    .app-layout {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    .main-content {
+        padding: 1rem;
     }
 }

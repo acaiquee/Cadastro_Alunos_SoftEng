@@ -52,19 +52,36 @@ if (registrationForm) {
     registrationForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        const nome = document.getElementById('nome').value.trim();
+        const senha = document.getElementById('senha').value;
+        const email = document.getElementById('email').value.trim();
+        const matricula = document.getElementById('matricula').value.trim();
+
+        // Validações no Front-end
+        if (nome.length < 3) {
+            showToast('O nome deve ter pelo menos 3 caracteres', 'error');
+            return;
+        }
+        if (senha.length < 6) {
+            showToast('A senha deve ter pelo menos 6 caracteres', 'error');
+            return;
+        }
+        if (!email.includes('@')) {
+            showToast('Insira um e-mail válido', 'error');
+            return;
+        }
+        if (!/^[a-zA-Z0-9]+$/.test(matricula)) {
+            showToast('A matrícula deve conter apenas letras e números', 'error');
+            return;
+        }
+        
         const studentData = {
-            nome: document.getElementById('nome').value,
+            nome: nome,
             tipo: document.getElementById('tipo').value,
             turma: document.getElementById('turma').value,
-            matricula: document.getElementById('matricula').value,
-            email: document.getElementById('email').value,
-            senha: document.getElementById('senha').value,
-            statusAvaliacao: document.getElementById('tipo').value === 'aluno' ? {
-                foiAvaliado: false,
-                mediaCHA: null,
-                mediaSocioemocional: null,
-                avaliadoPor: []
-            } : null
+            matricula: matricula,
+            email: email,
+            senha: senha
         };
 
         try {
@@ -85,6 +102,7 @@ if (registrationForm) {
                 showToast(result.error || 'Erro ao realizar cadastro', 'error');
             }
         } catch (error) {
+            console.error('Erro no registro:', error);
             showToast('Erro ao conectar com o servidor', 'error');
         }
     });
@@ -96,9 +114,17 @@ if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const matricula = document.getElementById('matricula').value.trim();
+        const senha = document.getElementById('senha').value;
+
+        if (!matricula || !senha) {
+            showToast('Preencha todos os campos', 'error');
+            return;
+        }
+
         const loginData = {
-            matricula: document.getElementById('matricula').value,
-            senha: document.getElementById('senha').value
+            matricula: matricula,
+            senha: senha
         };
 
         try {
@@ -120,6 +146,7 @@ if (loginForm) {
                 showToast(result.error || 'Credenciais inválidas', 'error');
             }
         } catch (error) {
+            console.error('Erro no login:', error);
             showToast('Erro ao conectar com o servidor', 'error');
         }
     });
