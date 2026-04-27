@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - EduManager</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div style="background: rgba(99, 102, 241, 0.1); width: 4rem; height: 4rem; border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                    <i data-lucide="graduation-cap" style="color: var(--primary-color); width: 2rem; height: 2rem;"></i>
+                </div>
+                <h1>Bem-vindo de volta</h1>
+                <p>Acesse sua conta para gerenciar as avaliações.</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="matricula">Matrícula</label>
+                    <input type="text" id="matricula" placeholder="Digite sua matrícula" required>
+                </div>
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" placeholder="Digite sua senha" required>
+                </div>
+                
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                    Acessar Sistema <i data-lucide="log-in" style="width: 1.25rem;"></i>
+                </button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">
+                Ainda não tem conta? <a href="index.html" style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Cadastre-se aqui</a>
+            </p>
+        </div>
+    </div>
+    
+    <div id="toast-container"></div>
+    <script src="script.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

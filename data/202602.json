@@ -1,0 +1,13 @@
+{
+  "nome": "Maria",
+  "turma": "ADS",
+  "matricula": "202602",
+  "email": "maria@gmail.com",
+  "senha": "202602",
+  "statusAvaliacao": {
+    "foiAvaliado": false,
+    "mediaCHA": null,
+    "mediaSocioemocional": null,
+    "avaliadoPor": []
+  }
+}

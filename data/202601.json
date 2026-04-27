@@ -1,0 +1,13 @@
+{
+  "nome": "jose da silva",
+  "turma": "ADS",
+  "matricula": "202601",
+  "email": "jose@gmail.com",
+  "senha": "202601",
+  "statusAvaliacao": {
+    "foiAvaliado": false,
+    "mediaCHA": null,
+    "mediaSocioemocional": null,
+    "avaliadoPor": []
+  }
+}

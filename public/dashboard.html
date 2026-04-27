@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Alunos</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i data-lucide="graduation-cap" style="color: var(--primary-color); width: 2rem; height: 2rem;"></i>
+                <h2>EduManager</h2>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li><a href="#" class="active"><i data-lucide="layout-dashboard"></i> Dashboard</a></li>
+                <li><a href="index.html"><i data-lucide="user-plus"></i> Novo Cadastro</a></li>
+                <li><a href="#" onclick="exportToCSV()"><i data-lucide="download"></i> Exportar Dados</a></li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <div class="theme-switch-wrapper">
+                    <span style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
+                        <i data-lucide="moon" style="width: 1rem;"></i> Modo Dark
+                    </span>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button class="btn-danger" onclick="logout()" style="width: 100%; justify-content: flex-start;">
+                    <i data-lucide="log-out"></i> Sair
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div>
+                    <h1>Olá, <span id="userNameDisplay">...</span> 👋</h1>
+                    <p style="color: var(--text-muted);">
+                        <span id="userRoleBadge" class="badge" style="background: var(--primary-color); color: white; margin-right: 0.5rem; text-transform: capitalize;">...</span>
+                        Acompanhe o desempenho da turma <span id="turmaDisplay" style="font-weight: 600; color: var(--primary-color);">...</span>
+                    </p>
+                </div>
+                <div class="search-wrapper">
+                    <i data-lucide="search" style="width: 1.25rem;"></i>
+                    <input type="text" id="studentSearch" placeholder="Buscar aluno..." onkeyup="filterStudents()">
+                </div>
+            </header>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: var(--primary-color);">
+                        <i data-lucide="users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Total Alunos</h3>
+                        <p id="stat-total">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color);">
+                        <i data-lucide="check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Avaliados</h3>
+                        <p id="stat-evaluated">0</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--warning-color);">
+                        <i data-lucide="clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Pendentes</h3>
+                        <p id="stat-pending">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Matrícula</th>
+                            <th>Status</th>
+                            <th>Médias (CHA / Socio)</th>
+                            <th style="text-align: right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <!-- Alunos carregados via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Evaluation Modal -->
+    <div id="evaluationModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div class="auth-header" style="text-align: left; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h2 id="targetStudentName" style="color: var(--primary-color);">Avaliar Aluno</h2>
+                        <p>Preencha as competências do aluno com base no desempenho observado.</p>
+                    </div>
+                    <button type="button" onclick="closeModal()" style="background: none; color: var(--text-muted); padding: 0.5rem;"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+            
+            <form id="evaluationForm">
+                <input type="hidden" id="targetMatricula">
+                
+                <!-- CHA Section -->
+                <div class="eval-section">
+                    <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="brain" style="color: var(--primary-color);"></i> Dimensões CHA
+                    </h3>
+                    <div class="table-container" style="border: none; background: transparent;">
+                        <table class="eval-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">Dimensão</th>
+                                    <th style="width: 40%;">Descrição</th>
+                                    <th style="width: 15%;">Avaliação (1-5)</th>
+                                    <th style="width: 20%;">Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-weight: 600;">Conhecimento</td>
+                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O saber teórico. O indivíduo domina os conceitos, ferramentas e informações necessárias?</td>
+                                    <td><input type="number" id="cha_conhecimento" min="1" max="5" class="eval-input" required></td>
+                                    <td><input type="text" id="obs_conhecimento" class="eval-input" placeholder="..."></td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 600;">Habilidade</td>
+                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O saber fazer. O indivíduo consegue aplicar a teoria na prática com precisão e agilidade?</td>
+                                    <td><input type="number" id="cha_habilidade" min="1" max="5" class="eval-input" required></td>
+                                    <td><input type="text" id="obs_habilidade" class="eval-input" placeholder="..."></td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 600;">Atitude</td>
+                                    <td style="font-size: 0.8rem; color: var(--text-muted);">O querer fazer. Demonstra proatividade, iniciativa e compromisso com os resultados?</td>
+                                    <td><input type="number" id="cha_atitude" min="1" max="5" class="eval-input" required></td>
+                                    <td><input type="text" id="obs_atitude" class="eval-input" placeholder="..."></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Soft Skills Section -->
+                <div class="eval-section" style="margin-top: 2rem;">
+                    <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="heart" style="color: var(--danger-color);"></i> Competências Socioemocionais
+                    </h3>
+                    <div class="soft-skills-grid">
+                        <div class="skill-item">
+                            <div class="skill-info">
+                                <strong>Autogestão</strong>
+                                <p>Capacidade de organizar o tempo e lidar com estresse.</p>
+                            </div>
+                            <select id="soft_autogestao" required>
+                                <option value="1">Em Desenvolvimento</option>
+                                <option value="2">Básico</option>
+                                <option value="3">Proficiente</option>
+                                <option value="4">Avançado</option>
+                            </select>
+                        </div>
+                        <div class="skill-item">
+                            <div class="skill-info">
+                                <strong>Empatia e Colaboração</strong>
+                                <p>Trabalho em equipe e apoio aos colegas.</p>
+                            </div>
+                            <select id="soft_colaboracao" required>
+                                <option value="1">Em Desenvolvimento</option>
+                                <option value="2">Básico</option>
+                                <option value="3">Proficiente</option>
+                                <option value="4">Avançado</option>
+                            </select>
+                        </div>
+                        <div class="skill-item">
+                            <div class="skill-info">
+                                <strong>Resiliência Emocional</strong>
+                                <p>Reação a feedbacks e mudanças repentinas.</p>
+                            </div>
+                            <select id="soft_resiliencia" required>
+                                <option value="1">Em Desenvolvimento</option>
+                                <option value="2">Básico</option>
+                                <option value="3">Proficiente</option>
+                                <option value="4">Avançado</option>
+                            </select>
+                        </div>
+                        <div class="skill-item">
+                            <div class="skill-info">
+                                <strong>Comunicação Assertiva</strong>
+                                <p>Expressão clara, respeitosa e eficiente.</p>
+                            </div>
+                            <select id="soft_comunicacao" required>
+                                <option value="1">Em Desenvolvimento</option>
+                                <option value="2">Básico</option>
+                                <option value="3">Proficiente</option>
+                                <option value="4">Avançado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                    <button type="button" class="btn-secondary" onclick="closeModal()" style="background: var(--bg-color); color: var(--text-color); flex: 1;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex: 2;">
+                        <i data-lucide="save"></i> Finalizar Avaliação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="script.js"></script>
+    <script>
+        // Check if user is logged in
+        window.user = JSON.parse(localStorage.getItem('user'));
+        if (!window.user) {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('userNameDisplay').textContent = window.user.nome;
+            document.getElementById('turmaDisplay').textContent = window.user.turma;
+            document.getElementById('userRoleBadge').textContent = window.user.tipo;
+        }
+
+        async function loadStudents() {
+            try {
+                const response = await fetch(`/api/students/${window.user.turma}`);
+                const students = await response.json();
+                
+                const tbody = document.getElementById('studentTableBody');
+                tbody.innerHTML = '';
+
+                // Update Stats
+                const total = students.length;
+                const evaluated = students.filter(s => s.statusAvaliacao?.foiAvaliado).length;
+                const pending = total - evaluated;
+
+                document.getElementById('stat-total').textContent = total;
+                document.getElementById('stat-evaluated').textContent = evaluated;
+                document.getElementById('stat-pending').textContent = pending;
+
+                students.forEach(s => {
+                    const tr = document.createElement('tr');
+                    
+                    const foiAvaliado = s.statusAvaliacao?.foiAvaliado || false;
+                    const statusClass = foiAvaliado ? 'badge-success' : 'badge-warning';
+                    const statusText = foiAvaliado ? 'Avaliado' : 'Pendente';
+                    const medias = foiAvaliado ? 
+                        `${s.statusAvaliacao.mediaCHA} / ${s.statusAvaliacao.mediaSocioemocional}` : 
+                        '- / -';
+                    
+                    // Escapar nome para o atributo onclick de forma segura
+                    const safeNome = s.nome.replace(/'/g, "\\'");
+                    
+                    tr.innerHTML = `
+                        <td style="font-weight: 500;">${s.nome}</td>
+                        <td style="color: var(--text-muted); font-family: monospace;">${s.matricula}</td>
+                        <td><span class="badge ${statusClass}">${statusText}</span></td>
+                        <td>${medias}</td>
+                        <td style="text-align: right;">
+                            ${window.user.tipo === 'professor' ? `
+                                <button class="btn-primary" onclick="window.openEvaluationModal('${s.matricula}', '${safeNome}')" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                                    <i data-lucide="edit-3" style="width: 1rem;"></i> ${foiAvaliado ? 'Editar' : 'Avaliar'}
+                                </button>
+                            ` : `
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Somente leitura</span>
+                            `}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Erro ao carregar alunos:', error);
+                showToast('Erro ao carregar alunos', 'error');
+            }
+        }
+
+        window.openEvaluationModal = async function(matricula, nome) {
+            console.log('Abrindo modal para:', matricula, nome);
+            
+            if (window.user.tipo !== 'professor') {
+                showToast('Apenas professores podem avaliar!', 'error');
+                return;
+            }
+
+            // Limpar campos
+            document.getElementById('targetMatricula').value = matricula;
+            document.getElementById('targetStudentName').textContent = nome;
+            
+            // Resetar formulário
+            document.getElementById('evaluationForm').reset();
+
+            try {
+                // Buscar dados atuais do aluno
+                const response = await fetch(`/api/student/${matricula}`);
+                if (response.ok) {
+                    const student = await response.json();
+                    if (student.statusAvaliacao && student.statusAvaliacao.detalhamento) {
+                        const det = student.statusAvaliacao.detalhamento;
+                        
+                        // Preencher CHA
+                        document.getElementById('cha_conhecimento').value = det.cha.conhecimento.nota;
+                        document.getElementById('obs_conhecimento').value = det.cha.conhecimento.obs;
+                        document.getElementById('cha_habilidade').value = det.cha.habilidade.nota;
+                        document.getElementById('obs_habilidade').value = det.cha.habilidade.obs;
+                        document.getElementById('cha_atitude').value = det.cha.atitude.nota;
+                        document.getElementById('obs_atitude').value = det.cha.atitude.obs;
+
+                        // Preencher Soft Skills
+                        document.getElementById('soft_autogestao').value = det.soft.autogestao;
+                        document.getElementById('soft_colaboracao').value = det.soft.colaboracao;
+                        document.getElementById('soft_resiliencia').value = det.soft.resiliencia;
+                        document.getElementById('soft_comunicacao').value = det.soft.comunicacao;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do aluno:', error);
+            }
+
+            document.getElementById('evaluationModal').style.display = 'block';
+            lucide.createIcons();
+        }
+
+        // Chamar carregamento inicial
+        if (window.user) {
+            loadStudents();
+        }
+
+        function closeModal() {
+            document.getElementById('evaluationModal').style.display = 'none';
+        }
+
+        // Fechar modal ao clicar fora dele
+        window.onclick = function(event) {
+            const modal = document.getElementById('evaluationModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        document.getElementById('evaluationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const detalhamento = {
+                cha: {
+                    conhecimento: {
+                        nota: parseInt(document.getElementById('cha_conhecimento').value),
+                        obs: document.getElementById('obs_conhecimento').value
+                    },
+                    habilidade: {
+                        nota: parseInt(document.getElementById('cha_habilidade').value),
+                        obs: document.getElementById('obs_habilidade').value
+                    },
+                    atitude: {
+                        nota: parseInt(document.getElementById('cha_atitude').value),
+                        obs: document.getElementById('obs_atitude').value
+                    }
+                },
+                soft: {
+                    autogestao: parseInt(document.getElementById('soft_autogestao').value),
+                    colaboracao: parseInt(document.getElementById('soft_colaboracao').value),
+                    resiliencia: parseInt(document.getElementById('soft_resiliencia').value),
+                    comunicacao: parseInt(document.getElementById('soft_comunicacao').value)
+                }
+            };
+
+            const data = {
+                matricula: document.getElementById('targetMatricula').value,
+                detalhamento: detalhamento,
+                avaliadorMatricula: user.matricula
+            };
+
+            try {
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showToast('Avaliação salva com sucesso!');
+                    closeModal();
+                    loadStudents();
+                } else {
+                    const err = await response.json();
+                    showToast('Erro: ' + err.error, 'error');
+                }
+            } catch (error) {
+                showToast('Erro na conexão com o servidor', 'error');
+            }
+        });
+
+        function filterStudents() {
+            const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#studentTableBody tr');
+            let hasResults = false;
+
+            rows.forEach(row => {
+                const name = row.cells[0].textContent.toLowerCase();
+                const matricula = row.cells[1].textContent.toLowerCase();
+                if (name.includes(searchTerm) || matricula.includes(searchTerm)) {
+                    row.style.display = '';
+                    hasResults = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Gerenciar mensagem de "Nenhum resultado"
+            let noResultMsg = document.getElementById('no-results-msg');
+            if (!hasResults) {
+                if (!noResultMsg) {
+                    noResultMsg = document.createElement('div');
+                    noResultMsg.id = 'no-results-msg';
+                    noResultMsg.style.textAlign = 'center';
+                    noResultMsg.style.padding = '2rem';
+                    noResultMsg.style.color = 'var(--text-muted)';
+                    noResultMsg.textContent = 'Nenhum aluno encontrado.';
+                    document.querySelector('.table-container').appendChild(noResultMsg);
+                }
+            } else if (noResultMsg) {
+                noResultMsg.remove();
+            }
+        }
+
+        async function exportToCSV() {
+            try {
+                const response = await fetch(`/api/students/${user.turma}`);
+                const students = await response.json();
+                
+                let csv = 'Nome,Matricula,Turma,Status,Media CHA,Media Socioemocional\n';
+                students.forEach(s => {
+                    const status = s.statusAvaliacao.foiAvaliado ? 'Avaliado' : 'Pendente';
+                    const cha = s.statusAvaliacao.mediaCHA || '';
+                    const socio = s.statusAvaliacao.mediaSocioemocional || '';
+                    csv += `${s.nome},${s.matricula},${s.turma},${status},${cha},${socio}\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `alunos_turma_${user.turma}.csv`;
+                link.click();
+                showToast('Dados exportados com sucesso!');
+            } catch (error) {
+                showToast('Erro ao exportar dados', 'error');
+            }
+        }
+
+        // Initialize Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
