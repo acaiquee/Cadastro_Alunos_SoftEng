@@ -46,6 +46,57 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
+// API Wrapper for common logic and security
+async function fetchAPI(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    const defaultHeaders = {
+        'Content-Type': 'application/json; charset=utf-8',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+
+    const config = {
+        ...options,
+        headers: {
+            ...defaultHeaders,
+            ...options.headers
+        }
+    };
+
+    try {
+        const response = await fetch(endpoint, config);
+        
+        // Handle 401/403 (Unauthorized/Forbidden)
+        if (response.status === 401 || response.status === 403) {
+            const isLoginPage = window.location.pathname.includes('login.html');
+            const isIndexPage = window.location.pathname.endsWith('/') || window.location.pathname.includes('index.html');
+            
+            if (!isLoginPage && !isIndexPage) {
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+                showToast('Sessão expirada. Redirecionando...', 'error');
+                setTimeout(() => window.location.href = 'login.html', 1500);
+                return;
+            }
+        }
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || `Erro ${response.status}: Falha na requisição`);
+        }
+        return data;
+    } catch (error) {
+        console.error(`API Error (${endpoint}):`, error);
+        if (error.message.includes('Failed to fetch')) {
+            showToast('Erro de conexão com o servidor', 'error');
+        }
+        throw error;
+    }
+}
+
+// Export for global use
+window.fetchAPI = fetchAPI;
+window.showToast = showToast;
+
 // Registration Logic
 const registrationForm = document.getElementById('registrationForm');
 if (registrationForm) {
@@ -85,25 +136,15 @@ if (registrationForm) {
         };
 
         try {
-            const response = await fetch('/api/register', {
+            await fetchAPI('/api/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json; charset=utf-8'
-                },
                 body: JSON.stringify(studentData)
             });
 
-            const result = await response.json();
-
-            if (response.ok) {
-                showToast('Cadastro realizado com sucesso!');
-                setTimeout(() => window.location.href = 'login.html', 1500);
-            } else {
-                showToast(result.error || 'Erro ao realizar cadastro', 'error');
-            }
+            showToast('Cadastro realizado com sucesso!');
+            setTimeout(() => window.location.href = 'login.html', 1500);
         } catch (error) {
-            console.error('Erro no registro:', error);
-            showToast('Erro ao conectar com o servidor', 'error');
+            showToast(error.message, 'error');
         }
     });
 }
@@ -122,37 +163,26 @@ if (loginForm) {
             return;
         }
 
-        const loginData = {
-            matricula: matricula,
-            senha: senha
-        };
-
         try {
-            const response = await fetch('/api/login', {
+            const result = await fetchAPI('/api/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json; charset=utf-8'
-                },
-                body: JSON.stringify(loginData)
+                body: JSON.stringify({ matricula, senha })
             });
 
-            const result = await response.json();
-
-            if (response.ok) {
-                localStorage.setItem('user', JSON.stringify(result.student));
-                showToast('Login bem-sucedido! Redirecionando...');
-                setTimeout(() => window.location.href = 'dashboard.html', 1000);
-            } else {
-                showToast(result.error || 'Credenciais inválidas', 'error');
-            }
+            localStorage.setItem('user', JSON.stringify(result.user));
+            localStorage.setItem('token', result.token);
+            
+            showToast('Login bem-sucedido! Redirecionando...');
+            setTimeout(() => window.location.href = 'dashboard.html', 1000);
         } catch (error) {
-            console.error('Erro no login:', error);
-            showToast('Erro ao conectar com o servidor', 'error');
+            showToast(error.message, 'error');
         }
     });
 }
 
 function logout() {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     window.location.href = 'login.html';
 }
+window.logout = logout;

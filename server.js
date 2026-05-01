@@ -1,297 +1,350 @@
+require('dotenv').config();
 const express = require('express');
-const fs = require('fs').promises; // Usar promises para operações não bloqueantes
+const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const morgan = require('morgan');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
-const PORT = 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+const PORT = process.env.PORT || 3000;
+const DATA_DIR = path.join(__dirname, process.env.DATA_DIR || 'data');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
 const SALT_ROUNDS = 10;
 
-// Garantir que o diretório de dados existe (síncrono na inicialização é aceitável)
+// Garantir que o diretório de dados existe
 const fsSync = require('fs');
 if (!fsSync.existsSync(DATA_DIR)) {
     fsSync.mkdirSync(DATA_DIR);
 }
 
+// Security & Utility Middleware
+app.use(helmet({
+    contentSecurityPolicy: false, // Desativar para facilitar desenvolvimento local com scripts externos
+}));
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(morgan('dev'));
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
 
-// Middleware para garantir UTF-8 em todas as respostas JSON
+// Rate Limiting
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100, // Limite de 100 requisições por IP
+    message: { error: 'Muitas tentativas de acesso, tente novamente mais tarde.' }
+});
+
+// Middleware para garantir UTF-8
 app.use((req, res, next) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     next();
 });
 
-// 1. Endpoint de Registro
-app.post('/api/register', async (req, res) => {
-    try {
-        const userData = req.body;
-        const { matricula, tipo, senha, nome, email } = userData;
+// Auth Middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-        // Validações Básicas
+    if (!token) return res.status(401).json({ error: 'Acesso negado. Token não fornecido.' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Token inválido ou expirado.' });
+        req.user = user;
+        next();
+    });
+};
+
+// In-memory locks para evitar race conditions em arquivos JSON
+const locks = new Set();
+const acquireLock = async (id) => {
+    while (locks.has(id)) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    locks.add(id);
+};
+const releaseLock = (id) => locks.delete(id);
+
+// --- Helpers ---
+
+const filterSensitiveData = (user) => {
+    const filtered = { ...user };
+    delete filtered.senha;
+    return filtered;
+};
+
+// --- Rotas de Autenticação ---
+
+app.post('/api/register', authLimiter, async (req, res) => {
+    try {
+        let { matricula, tipo, senha, nome, email, turma } = req.body;
+        matricula = matricula ? matricula.trim() : '';
+        nome = nome ? nome.trim() : '';
+        email = email ? email.trim() : '';
+        turma = turma ? turma.trim() : '';
+
         if (!matricula || !/^[a-zA-Z0-9]+$/.test(matricula)) {
-            return res.status(400).json({ error: 'Matrícula inválida (apenas letras e números)' });
+            return res.status(400).json({ error: 'Matrícula inválida.' });
         }
         if (!senha || senha.length < 6) {
-            return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres' });
-        }
-        if (!nome || nome.trim().length < 3) {
-            return res.status(400).json({ error: 'Nome muito curto' });
-        }
-        if (!email || !email.includes('@')) {
-            return res.status(400).json({ error: 'E-mail inválido' });
+            return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
         }
 
         const filePath = path.join(DATA_DIR, `${matricula}.json`);
-
-        // Verificar se o usuário já existe
+        
+        await acquireLock(matricula);
         try {
-            await fs.access(filePath);
-            return res.status(400).json({ error: 'Usuário já cadastrado com esta matrícula' });
-        } catch (err) {
-            // Arquivo não existe, prosseguir
-        }
+            if (fsSync.existsSync(filePath)) {
+                return res.status(400).json({ error: 'Usuário já cadastrado.' });
+            }
 
-        // Hash da senha antes de salvar
-        const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-        userData.senha = hashedPassword;
-
-        // Estrutura padrão para alunos
-        if (tipo === 'aluno') {
-            userData.statusAvaliacao = userData.statusAvaliacao || {
-                foiAvaliado: false,
-                mediaCHA: null,
-                mediaSocioemocional: null,
-                avaliadoPor: []
+            const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+            const userData = {
+                matricula,
+                nome,
+                email,
+                turma,
+                tipo: tipo || 'aluno',
+                senha: hashedPassword,
+                avaliacoesRecebidas: [],
+                statusAvaliacao: tipo === 'aluno' ? {
+                    foiAvaliado: false,
+                    mediaCHA: null,
+                    mediaSocioemocional: null,
+                    avaliadoPor: []
+                } : undefined
             };
-        }
 
-        await fs.writeFile(filePath, JSON.stringify(userData, null, 2), 'utf8');
-        console.log(`Novo usuário cadastrado: ${nome} (${tipo}) - ${matricula}`);
-        res.status(201).json({ message: 'Usuário cadastrado com sucesso' });
+            await fs.writeFile(filePath, JSON.stringify(userData, null, 2), 'utf8');
+            res.status(201).json({ message: 'Usuário cadastrado com sucesso.' });
+        } finally {
+            releaseLock(matricula);
+        }
     } catch (error) {
         console.error('Erro no registro:', error);
-        res.status(500).json({ error: 'Erro interno ao processar cadastro' });
+        res.status(500).json({ error: 'Erro interno ao cadastrar.' });
     }
 });
 
-// 2. Endpoint de Login
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
     try {
-        const { matricula, senha } = req.body;
-        if (!matricula || !/^[a-zA-Z0-9]+$/.test(matricula)) {
-            return res.status(400).json({ error: 'Matrícula inválida' });
+        let { matricula, senha } = req.body;
+        matricula = matricula ? matricula.trim() : '';
+        
+        if (!matricula || !senha) {
+            return res.status(400).json({ error: 'Matrícula e senha são obrigatórios.' });
         }
+
         const filePath = path.join(DATA_DIR, `${matricula}.json`);
 
-        try {
-            const data = await fs.readFile(filePath, 'utf8');
-            const user = JSON.parse(data);
+        if (!fsSync.existsSync(filePath)) {
+            console.log(`Login failed: File not found for matricula ${matricula} at ${filePath}`);
+            return res.status(401).json({ error: 'Credenciais inválidas.' });
+        }
 
-            let isPasswordValid = false;
-            
-            // Tentar comparar com bcrypt
-            try {
-                isPasswordValid = await bcrypt.compare(senha, user.senha);
-            } catch (e) {
-                // Se der erro no bcrypt, pode ser que a senha esteja em texto plano (legado)
-                isPasswordValid = (user.senha === senha);
-                
-                // Migrar para hash se for legado
-                if (isPasswordValid) {
-                    const hashed = await bcrypt.hash(senha, SALT_ROUNDS);
-                    user.senha = hashed;
-                    await fs.writeFile(filePath, JSON.stringify(user, null, 2), 'utf8');
-                    console.log(`Senha do usuário ${matricula} migrada para hash com sucesso.`);
+        const data = await fs.readFile(filePath, 'utf8');
+        const user = JSON.parse(data);
+
+        // Primeiro tenta comparação por bcrypt
+        let isPasswordValid = await bcrypt.compare(senha, user.senha).catch(() => false);
+        
+        // Se falhar, tenta comparação direta para senhas legado
+        if (!isPasswordValid && user.senha === senha) {
+            isPasswordValid = true;
+            // Migra para hash
+            user.senha = await bcrypt.hash(senha, SALT_ROUNDS);
+            await fs.writeFile(filePath, JSON.stringify(user, null, 2), 'utf8');
+            console.log(`Password migrated to hash for user ${matricula}`);
+        }
+
+        if (isPasswordValid) {
+            const token = jwt.sign(
+                { matricula: user.matricula, tipo: user.tipo, turma: user.turma, nome: user.nome },
+                JWT_SECRET,
+                { expiresIn: '8h' }
+            );
+
+            res.json({
+                message: 'Login bem-sucedido',
+                token,
+                user: {
+                    matricula: user.matricula,
+                    nome: user.nome,
+                    turma: user.turma,
+                    tipo: user.tipo
                 }
-            }
-
-            // Fallback se o bcrypt.compare retornar false mas for plain text (caso raro onde bcrypt não lança erro mas falha)
-            if (!isPasswordValid && user.senha === senha) {
-                isPasswordValid = true;
-                const hashed = await bcrypt.hash(senha, SALT_ROUNDS);
-                user.senha = hashed;
-                await fs.writeFile(filePath, JSON.stringify(user, null, 2), 'utf8');
-                console.log(`Senha do usuário ${matricula} migrada para hash (fallback).`);
-            }
-
-            if (isPasswordValid) {
-                console.log(`Login bem-sucedido: ${user.nome} (${user.tipo})`);
-                res.json({ 
-                    message: 'Login bem-sucedido',
-                    student: {
-                        matricula: user.matricula,
-                        nome: user.nome,
-                        turma: user.turma,
-                        email: user.email,
-                        tipo: user.tipo || 'aluno'
-                    }
-                });
-            } else {
-                console.warn(`Tentativa de login falhou (senha incorreta): ${matricula}`);
-                res.status(401).json({ error: 'Credenciais inválidas' }); // Mensagem genérica por segurança
-            }
-        } catch (err) {
-            console.warn(`Tentativa de login falhou (matricula não encontrada): ${matricula}`);
-            res.status(401).json({ error: 'Credenciais inválidas' }); // Mensagem genérica por segurança
+            });
+        } else {
+            res.status(401).json({ error: 'Credenciais inválidas.' });
         }
     } catch (error) {
         console.error('Erro no login:', error);
-        res.status(500).json({ error: 'Erro interno ao processar login' });
+        res.status(500).json({ error: 'Erro interno no login.' });
     }
 });
 
-// 3. Listar alunos por turma (Async/Non-blocking)
-app.get('/api/students/:turma', async (req, res) => {
+// --- Rotas Protegidas ---
+
+app.get('/api/students/:turma', authenticateToken, async (req, res) => {
     try {
         const { turma } = req.params;
         const files = await fs.readdir(DATA_DIR);
-        const jsonFiles = files.filter(file => file.endsWith('.json'));
-
-        // Ler todos os arquivos em paralelo usando Promise.all para não bloquear o event loop
-        const studentsData = await Promise.all(
-            jsonFiles.map(async (file) => {
-                try {
-                    const filePath = path.join(DATA_DIR, file);
-                    const data = await fs.readFile(filePath, 'utf8');
-                    if (!data) return null;
-                    return JSON.parse(data);
-                } catch (err) {
-                    console.error(`Erro ao processar arquivo ${file}:`, err);
-                    return null;
+        
+        const students = [];
+        for (const file of files.filter(f => f.endsWith('.json'))) {
+            try {
+                const data = await fs.readFile(path.join(DATA_DIR, file), 'utf8');
+                const user = JSON.parse(data);
+                
+                // Normaliza o tipo para garantir que cadastros antigos e novos funcionem
+                const userTipo = user.tipo ? user.tipo.toLowerCase() : 'aluno';
+                
+                if (userTipo === 'aluno' && user.turma === turma) {
+                    students.push({
+                        matricula: user.matricula,
+                        nome: user.nome,
+                        turma: user.turma,
+                        statusAvaliacao: user.statusAvaliacao
+                    });
                 }
-            })
-        );
+            } catch (err) {
+                console.error(`Erro ao ler arquivo ${file}:`, err);
+            }
+        }
 
-        // Filtrar apenas usuários do tipo 'aluno' (ou sem tipo), da turma correta e não nulos
-        const filteredStudents = studentsData
-            .filter(user => user && (user.tipo === 'aluno' || !user.tipo) && user.turma === turma)
-            .map(student => ({
-                matricula: student.matricula,
-                nome: student.nome,
-                turma: student.turma,
-                statusAvaliacao: student.statusAvaliacao
-            }));
-
-        res.json(filteredStudents);
+        res.json(students);
     } catch (error) {
-        console.error('Erro ao listar alunos:', error);
-        res.status(500).json({ error: 'Erro ao listar alunos' });
+        res.status(500).json({ error: 'Erro ao listar alunos.' });
     }
 });
 
-// 4. Buscar um aluno específico
-app.get('/api/student/:matricula', async (req, res) => {
+app.get('/api/student/:matricula', authenticateToken, async (req, res) => {
     try {
         const { matricula } = req.params;
-        if (!matricula || !/^[a-zA-Z0-9]+$/.test(matricula)) {
-            return res.status(400).json({ error: 'Matrícula inválida' });
-        }
         const filePath = path.join(DATA_DIR, `${matricula}.json`);
-
-        try {
-            const data = await fs.readFile(filePath, 'utf8');
-            const student = JSON.parse(data);
-            res.json(student);
-        } catch (err) {
-            res.status(404).json({ error: 'Estudante não encontrado' });
-        }
+        
+        if (!fsSync.existsSync(filePath)) return res.status(404).json({ error: 'Não encontrado.' });
+        
+        const data = await fs.readFile(filePath, 'utf8');
+        const student = JSON.parse(data);
+        res.json(filterSensitiveData(student));
     } catch (error) {
-        console.error('Erro ao buscar estudante:', error);
-        res.status(500).json({ error: 'Erro ao buscar estudante' });
+        res.status(500).json({ error: 'Erro ao buscar dados.' });
     }
 });
 
-// 5. Atualizar avaliação (Avaliação 360 - Professores e Alunos)
-app.post('/api/evaluate', async (req, res) => {
+app.post('/api/evaluate', authenticateToken, async (req, res) => {
+    const { matricula, detalhamento } = req.body;
+    const avaliadorMatricula = req.user.matricula;
+    const avaliadorTipo = req.user.tipo;
+    const avaliadorTurma = req.user.turma;
+
+    if (matricula === avaliadorMatricula) {
+        return res.status(400).json({ error: 'Auto-avaliação não permitida.' });
+    }
+
     try {
-        const { matricula, detalhamento, avaliadorMatricula } = req.body;
-
-        if (!matricula || !/^[a-zA-Z0-9]+$/.test(matricula) || !avaliadorMatricula || !/^[a-zA-Z0-9]+$/.test(avaliadorMatricula)) {
-            return res.status(400).json({ error: 'Matrícula inválida' });
-        }
-
-        if (matricula === avaliadorMatricula) {
-            return res.status(400).json({ error: 'Não é possível avaliar a si mesmo' });
-        }
-
-        if (!detalhamento || !detalhamento.cha || !detalhamento.soft) {
-            return res.status(400).json({ error: 'Dados de avaliação incompletos' });
-        }
-
-        // Verificar se o avaliador existe
-        const avaliadorPath = path.join(DATA_DIR, `${avaliadorMatricula}.json`);
-        let avaliador;
+        await acquireLock(matricula);
         try {
-            const avaliadorData = await fs.readFile(avaliadorPath, 'utf8');
-            avaliador = JSON.parse(avaliadorData);
-        } catch (err) {
-            return res.status(404).json({ error: 'Avaliador não encontrado' });
-        }
+            const studentPath = path.join(DATA_DIR, `${matricula}.json`);
+            if (!fsSync.existsSync(studentPath)) return res.status(404).json({ error: 'Estudante não encontrado.' });
 
-        const studentPath = path.join(DATA_DIR, `${matricula}.json`);
-        try {
             const data = await fs.readFile(studentPath, 'utf8');
             const student = JSON.parse(data);
-            
-            // Inicializar estrutura de avaliações se não existir (Avaliação 360)
-            if (!student.avaliacoesRecebidas) {
-                student.avaliacoesRecebidas = [];
+
+            // Regra: Alunos só avaliam colegas da mesma turma. Professores avaliam qualquer um.
+            if (avaliadorTipo !== 'professor' && student.turma !== avaliadorTurma) {
+                return res.status(403).json({ error: 'Você só pode avaliar alunos da sua própria turma.' });
             }
 
-            // Calcular médias para ESTA avaliação específica
-            const cha = detalhamento.cha;
-            const soft = detalhamento.soft;
-            
+            const { cha, soft } = detalhamento;
             const mediaCHA = (cha.conhecimento.nota + cha.habilidade.nota + cha.atitude.nota) / 3;
             const mediaSocio = (soft.autogestao + soft.colaboracao + soft.resiliencia + soft.comunicacao) / 4;
 
             const novaAvaliacao = {
-                avaliadorMatricula: avaliadorMatricula,
-                avaliadorNome: avaliador.nome,
-                avaliadorTipo: avaliador.tipo,
+                avaliadorMatricula,
+                avaliadorNome: req.user.nome,
+                avaliadorTipo: req.user.tipo,
                 data: new Date().toISOString(),
-                detalhamento: detalhamento,
+                detalhamento,
                 mediaCHA: parseFloat(mediaCHA.toFixed(1)),
                 mediaSocioemocional: parseFloat(mediaSocio.toFixed(1))
             };
 
-            // Se já avaliou, atualiza, senão adiciona
-            const index = student.avaliacoesRecebidas.findIndex(a => a.avaliadorMatricula === avaliadorMatricula);
-            if (index !== -1) {
-                student.avaliacoesRecebidas[index] = novaAvaliacao;
-            } else {
-                student.avaliacoesRecebidas.push(novaAvaliacao);
-            }
+            student.avaliacoesRecebidas = student.avaliacoesRecebidas || [];
+            const idx = student.avaliacoesRecebidas.findIndex(a => a.avaliadorMatricula === avaliadorMatricula);
+            
+            if (idx !== -1) student.avaliacoesRecebidas[idx] = novaAvaliacao;
+            else student.avaliacoesRecebidas.push(novaAvaliacao);
 
-            // Recalcular médias globais do aluno
-            const totalAvaliacoes = student.avaliacoesRecebidas.length;
-            const somaCHA = student.avaliacoesRecebidas.reduce((acc, curr) => acc + curr.mediaCHA, 0);
-            const somaSocio = student.avaliacoesRecebidas.reduce((acc, curr) => acc + curr.mediaSocioemocional, 0);
+            const total = student.avaliacoesRecebidas.length;
+            const avgCHA = student.avaliacoesRecebidas.reduce((a, b) => a + b.mediaCHA, 0) / total;
+            const avgSocio = student.avaliacoesRecebidas.reduce((a, b) => a + b.mediaSocioemocional, 0) / total;
 
             student.statusAvaliacao = {
                 foiAvaliado: true,
-                mediaCHA: parseFloat((somaCHA / totalAvaliacoes).toFixed(1)),
-                mediaSocioemocional: parseFloat((somaSocio / totalAvaliacoes).toFixed(1)),
-                totalAvaliacoes: totalAvaliacoes,
+                mediaCHA: parseFloat(avgCHA.toFixed(1)),
+                mediaSocioemocional: parseFloat(avgSocio.toFixed(1)),
+                totalAvaliacoes: total,
                 avaliadoPor: student.avaliacoesRecebidas.map(a => a.avaliadorMatricula)
             };
 
             await fs.writeFile(studentPath, JSON.stringify(student, null, 2), 'utf8');
-            console.log(`Avaliação 360 salva para ${student.nome} por ${avaliador.nome} (${avaliador.tipo})`);
-            res.json({ message: 'Avaliação salva com sucesso', status: student.statusAvaliacao });
-        } catch (err) {
-            res.status(404).json({ error: 'Estudante não encontrado' });
+            res.json({ message: 'Avaliação salva!', status: student.statusAvaliacao });
+        } finally {
+            releaseLock(matricula);
         }
     } catch (error) {
-        console.error('Erro na avaliação:', error);
-        res.status(500).json({ error: 'Erro interno ao processar avaliação' });
+        res.status(500).json({ error: 'Erro ao salvar avaliação.' });
+    }
+});
+
+app.get('/api/report360/:turma', authenticateToken, async (req, res) => {
+    try {
+        const { turma } = req.params;
+        const files = await fs.readdir(DATA_DIR);
+        
+        const evaluations = [];
+        for (const file of files.filter(f => f.endsWith('.json'))) {
+            try {
+                const data = await fs.readFile(path.join(DATA_DIR, file), 'utf8');
+                const student = JSON.parse(data);
+                
+                // Normaliza o tipo para garantir que cadastros antigos e novos funcionem
+                const userTipo = student.tipo ? student.tipo.toLowerCase() : 'aluno';
+                
+                // Se não tiver turma mas for um aluno antigo, podemos tentar inferir ou apenas aceitar se o filtro for compatível
+                const studentTurma = student.turma || '';
+                
+                if (userTipo === 'aluno' && (studentTurma === turma || !turma) && student.avaliacoesRecebidas) {
+                    student.avaliacoesRecebidas.forEach(av => {
+                        evaluations.push({
+                            alunoNome: student.nome || 'Aluno sem nome',
+                            alunoMatricula: student.matricula,
+                            avaliadorNome: av.avaliadorNome || 'Avaliador',
+                            avaliadorMatricula: av.avaliadorMatricula,
+                            avaliadorTipo: av.avaliadorTipo || 'estudante',
+                            data: av.data || new Date().toISOString(),
+                            mediaCHA: Number(av.mediaCHA) || 0,
+                            mediaSocioemocional: Number(av.mediaSocioemocional) || 0
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error(`Erro ao processar arquivo no relatório 360: ${file}`, err);
+            }
+        }
+
+        res.json(evaluations);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao gerar relatório 360.' });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`\n🚀 Servidor Rodando!`);
+    console.log(`🔗 Local: http://localhost:${PORT}`);
+    console.log(`📁 Dados: ${DATA_DIR}\n`);
 });
